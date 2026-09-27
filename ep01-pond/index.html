@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your Pond · HPG Math</title>
+<meta name="description" content="Can you stop a doubling pond at exactly half full? Guess the day your pond fills. A playable companion to HPG Math's 'Slow, Then Sudden'.">
+<meta property="og:title" content="Can you stop it at half full?">
+<meta property="og:description" content="A pond that doubles every day. Tap to freeze it at 50%. Almost everyone is too late.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700&family=Geist+Mono:wght@400;600&family=Nothing+You+Could+Do&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1426; --grid:#1A2A47; --ink:#E6EEF7; --soft:#7F93B2; --cyan:#4FD1E0; --amber:#FFB547;
+    --panel:#0F1C33; --line:rgba(230,238,247,.14);
+    --font:"Bricolage Grotesque",system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,monospace; --hand:"Nothing You Could Do",cursive;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+  body{background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:32px 32px}
+  main{max-width:1080px;margin:0 auto;padding:20px 16px 56px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .brand{font-family:var(--mono);font-size:13px;letter-spacing:.08em;color:var(--soft);text-transform:uppercase;text-decoration:none}
+  .brand b{color:var(--amber)}
+  h1{font-size:clamp(26px,4.6vw,42px);line-height:1.08;margin:10px 0 14px;font-weight:700}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{font:600 15px var(--font);color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer}
+  .tab[aria-selected=true]{color:#1B1305;background:var(--amber);border-color:var(--amber)}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+  @media (max-width:860px){.layout{grid-template-columns:1fr}}
+  .panel{background:rgba(15,28,51,.92);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .stage{position:relative;user-select:none;-webkit-user-select:none}
+  .hud{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:15px;margin-bottom:8px;gap:8px}
+  .hud .pct{color:var(--soft);text-align:right}
+  .pondwrap{position:relative;max-width:560px;margin:0 auto}
+  canvas{display:block;width:100%;height:auto;border-radius:10px}
+  #pond{aspect-ratio:1/1;touch-action:manipulation;cursor:pointer}
+  #chart{aspect-ratio:2.3/1;margin-top:12px}
+  .says{position:absolute;right:4%;top:4%;max-width:60%;text-align:right;font-family:var(--hand);color:var(--amber);font-size:clamp(20px,3.4vw,30px);text-shadow:0 2px 12px rgba(11,20,38,.9);pointer-events:none;transition:opacity .25s,transform .25s;background:rgba(11,20,38,.78);padding:4px 12px 6px;border-radius:10px}
+  .says:empty{display:none}
+  .says.pulse{transform:scale(1.08)}
+  .flash{position:absolute;inset:0;border-radius:10px;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(255,181,71,.55),rgba(255,181,71,0) 70%);opacity:0;transition:opacity .5s}
+  .flash.on{opacity:1;transition:none}
+  .bigbtn{display:block;width:100%;margin-top:12px;font:700 20px var(--font);color:#1B1305;background:var(--amber);border:0;border-radius:14px;padding:16px;cursor:pointer}
+  .bigbtn.stop{background:#FF6B57;color:#fff}
+  .bigbtn:disabled{opacity:.45;cursor:default}
+  button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .step{font-family:var(--mono);font-size:12px;color:var(--soft);letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px}
+  .field{margin:0 0 16px}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  label{font-size:15px}
+  .val{font-family:var(--mono);color:var(--amber);font-size:16px;white-space:nowrap}
+  .hint{color:var(--soft);font-size:13px;margin-top:2px}
+  input[type=range]{width:100%;margin:8px 0 0;accent-color:var(--amber);height:28px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{font:13px var(--font);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 10px;cursor:pointer}
+  .chip[aria-pressed=true]{border-color:var(--amber);color:var(--amber)}
+  .result{margin-top:14px;min-height:40px}
+  .big{font-size:clamp(22px,3.6vw,30px);font-weight:700;margin:0;line-height:1.15}
+  .big em{font-style:normal;color:var(--amber)}
+  .line{margin:6px 0 0;font-size:16px}
+  .muted{color:var(--soft)}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .ghost{white-space:nowrap;font:15px var(--font);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer}
+  .best{font-family:var(--mono);font-size:13px;color:var(--soft);margin-top:8px}
+  footer{margin-top:22px;color:var(--soft);font-size:14px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+  footer a{color:var(--ink)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--amber);border-radius:10px;padding:10px 14px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+  .toast.show{opacity:1}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="brand" href="https://www.youtube.com/@HPGMath" target="_blank" rel="noopener"><b>●</b> HPG Math · Slow, Then Sudden</a>
+    <button class="ghost" id="sound" aria-pressed="true">Sound on</button>
+  </header>
+  <h1 id="title">Can you stop it at half full?</h1>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabCatch" aria-selected="true">Catch it at 50%</button>
+    <button class="tab" role="tab" id="tabGuess" aria-selected="false">Guess the day</button>
+  </div>
+
+  <div class="layout">
+    <section class="panel stage">
+      <div class="hud"><span id="day">DAY 0</span><span class="pct" id="pct">1 dot</span></div>
+      <div class="pondwrap">
+        <canvas id="pond" width="1080" height="1080" aria-label="The pond. Tap to freeze it."></canvas>
+        <div class="says" id="says" aria-live="polite"></div>
+        <div class="flash" id="flash"></div>
+      </div>
+      <button class="bigbtn" id="go">Start</button>
+      <canvas id="chart" width="1080" height="470" aria-label="Coverage over time"></canvas>
+      <div class="result" id="result" aria-live="polite"></div>
+      <div class="actions hide" id="actions">
+        <button class="ghost" id="again">Play again</button>
+        <button class="ghost" id="save">Save my card</button>
+        <button class="ghost" id="share">Share</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div id="catchHelp">
+        <p class="step">How to play</p>
+        <p class="line" style="margin-top:0">Every day, each dot becomes <b>R</b> dots. Press <b>Start</b>, then tap the pond (or press <b>Space</b>) the moment you think it's <b>half full</b>.</p>
+        <p class="line muted">Sounds easy. Almost everyone is too late.</p>
+        <div class="best" id="best"></div>
+      </div>
+      <div id="guessHelp" class="hide">
+        <p class="step">Guess first</p>
+        <div class="field">
+          <div class="row"><label for="g">It will be full on…</label><span class="val" id="gVal">day 30</span></div>
+          <input type="range" id="g" min="1" max="250" step="1" value="30">
+          <div class="hint">Lock in a guess, then press Start and watch.</div>
+        </div>
+      </div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+      <p class="step">Your pond</p>
+      <div class="field">
+        <div class="row"><label for="r">R · each dot becomes</label><span class="val" id="rVal">2.0</span></div>
+        <input type="range" id="r" min="1.1" max="3" step="0.1" value="2">
+        <div class="hint">2.0 = doubling every day · 1.1 = +10% a day</div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <div class="row"><label for="k">Pond size</label><span class="val" id="kVal">1,000,000</span></div>
+        <input type="range" id="k" min="2" max="10" step="0.1" value="6">
+        <div class="chips" id="presets">
+          <button class="chip" data-k="1000">pond · 1,000</button>
+          <button class="chip" data-k="1000000">city · 1M</button>
+          <button class="chip" data-k="50000000">country · 50M</button>
+          <button class="chip" data-k="8300000000">Earth · 8.3B</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>Made for the video <a href="https://www.youtube.com/@HPGMath" target="_blank" rel="noopener">“Slow, Then Sudden”</a> · HPG Math</span>
+    <span>The math: day it fills = ⌈ ln(size) ÷ ln(R) ⌉ · half full is always one “R-step” before full</span>
+  </footer>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  "use strict";
+  const C = {bg:"#0B1426", grid:"#1A2A47", ink:"#E6EEF7", soft:"#7F93B2", amber:"#FFB547"};
+  const HOME = "https://qiqs00.github.io/hpg-math-playground/ep01-pond/";
+  const M = 20, CELLS = M * M;
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lnR = () => Math.log(st.R);
+
+  // ---------- exact math ----------
+  const fillDay = (R, K) => Math.ceil(Math.log(K) / Math.log(R) - 1e-9);          // first day with R^d >= K
+  // last day the pond still *looks* ~97% empty (coverage rounds to 3% or less) — day 25 of the 30-day pond in the video
+  const emptyDay = (R, K) => (0.034 * K >= 1) ? Math.floor(Math.log(0.034 * K) / Math.log(R) + 1e-9) : null;
+  const emptyPct = (R, K, d) => Math.max(1, Math.round(100 - Math.min(Math.pow(R, d) / K, 1) * 100));
+  const tAt = (f, R, K) => Math.log(Math.max(f * K, 1)) / Math.log(R);                // time (days) when coverage = f
+
+  // ---------- state ----------
+  const st = {mode: "catch", R: 2, K: 1e6, guess: 30, t: 0, phase: "idle", sound: true, stopF: null, stopT: null};
+  const safe = f => { try { return f(); } catch (_) { return null; } };
+  const q = safe(() => new URLSearchParams(location.search)) || new URLSearchParams();
+  if (q.has("r")) st.R = clamp(parseFloat(q.get("r")) || 2, 1.1, 3);
+  if (q.has("k")) st.K = clamp(parseFloat(q.get("k")) || 1e6, 100, 1e10);
+  if (q.has("g")) st.guess = clamp(parseInt(q.get("g"), 10) || 30, 1, 250);
+  if (q.get("m") === "guess") st.mode = "guess";
+
+  // ---------- controls ----------
+  const rIn = $("r"), kIn = $("k"), gIn = $("g");
+  rIn.value = st.R.toFixed(1); kIn.value = Math.log10(st.K).toFixed(1); gIn.value = st.guess;
+  const niceK = v => { const e = Math.floor(v), m = Math.pow(10, v - e); return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * Math.pow(10, e); };
+  function labels(){
+    $("rVal").textContent = st.R.toFixed(1); $("kVal").textContent = fmt(st.K); $("gVal").textContent = `day ${st.guess}`;
+    document.querySelectorAll("#presets .chip").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.k) === st.K)));
+  }
+  function settingsChanged(){ if (st.phase !== "run") reset(); labels(); }
+  rIn.addEventListener("input", () => { st.R = Math.round(parseFloat(rIn.value) * 10) / 10; settingsChanged(); });
+  kIn.addEventListener("input", () => { st.K = niceK(parseFloat(kIn.value)); settingsChanged(); });
+  gIn.addEventListener("input", () => { st.guess = parseInt(gIn.value, 10); labels(); if (st.phase !== "run") drawChart(); });
+  document.querySelectorAll("#presets .chip").forEach(b => b.addEventListener("click", () => {
+    st.K = Number(b.dataset.k); kIn.value = Math.log10(st.K).toFixed(1); settingsChanged();
+  }));
+  $("sound").addEventListener("click", e => { st.sound = !st.sound; e.target.textContent = st.sound ? "Sound on" : "Sound off"; e.target.setAttribute("aria-pressed", String(st.sound)); });
+
+  function setMode(m){
+    if (st.phase === "run") return;
+    st.mode = m;
+    $("tabCatch").setAttribute("aria-selected", String(m === "catch"));
+    $("tabGuess").setAttribute("aria-selected", String(m === "guess"));
+    $("catchHelp").classList.toggle("hide", m !== "catch");
+    $("guessHelp").classList.toggle("hide", m !== "guess");
+    $("title").textContent = m === "catch" ? "Can you stop it at half full?" : "Guess the day your pond fills.";
+    reset();
+  }
+  $("tabCatch").addEventListener("click", () => setMode("catch"));
+  $("tabGuess").addEventListener("click", () => setMode("guess"));
+
+  // ---------- sound: the channel's "pop" ----------
+  let ac = null, lastPop = 0;
+  function pop(gain = .1, f0 = 820, f1 = 260, dur = .09){
+    if (!st.sound) return;
+    const now = performance.now(); if (now - lastPop < 45) return; lastPop = now;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * .7);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+    } catch (_) {}
+  }
+
+  // ---------- pond drawing (cells pop in with a little bounce) ----------
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const ORDER = [...Array(CELLS).keys()].map(i => ({x: i % M, y: Math.floor(i / M)}))
+    .map(c => ({...c, k: Math.hypot(c.x, c.y) + rnd() * 2.2})).sort((a, b) => a.k - b.k);
+  const JIT = ORDER.map(() => [(rnd() - .5) * .28, (rnd() - .5) * .28, .27 + rnd() * .06]);
+  const born = new Float64Array(CELLS).fill(-1);
+  let shown = 0;
+  const easeBack = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+
+  function cellsFor(f){ let n = Math.round(f * CELLS); if (f > 0 && n < 1) n = 1; return n; }
+  function drawPond(ctx, W, x0, y0, f, now, animate){
+    const cell = W / M;
+    ctx.save(); ctx.translate(x0, y0);
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, W);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = Math.max(1, W / 540);
+    for (let i = 1; i < M; i++){ ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, W); ctx.moveTo(0, i * cell); ctx.lineTo(W, i * cell); ctx.stroke(); }
+    const n = cellsFor(f);
+    for (let j = 0; j < n; j++){
+      const c = ORDER[j], [jx, jy, r] = JIT[j];
+      let s = 1;
+      if (animate && born[j] >= 0){ const a = (now - born[j]) / 220; s = a >= 1 ? 1 : Math.max(0, easeBack(a)); }
+      const cx = (c.x + .5 + jx) * cell, cy = W - (c.y + .5 + jy) * cell, rad = r * cell * s;
+      if (rad <= 0) continue;
+      const g = ctx.createRadialGradient(cx, cy, rad * .6, cx, cy, rad * 2.3);
+      g.addColorStop(0, "rgba(255,181,71,.33)"); g.addColorStop(1, "rgba(255,181,71,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, rad * 2.3, 0, 7); ctx.fill();
+      ctx.fillStyle = C.amber; ctx.beginPath(); ctx.arc(cx, cy, rad, 0, 7); ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(230,238,247,.55)"; ctx.lineWidth = Math.max(2, W / 360); ctx.strokeRect(0, 0, W, W);
+    ctx.restore();
+  }
+
+  // ---------- chart ----------
+  function drawChart(){
+    const cv = $("chart"), ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H); ctx.fillStyle = "rgba(11,20,38,.55)"; ctx.fillRect(0, 0, W, H);
+    const F = fillDay(st.R, st.K);
+    const D = st.mode === "guess" ? Math.max(F, st.guess) + 2 : F + 1;
+    const L = 78, B = H - 56, T = 30, Rt = W - 24, X = d => L + (Rt - L) * d / D, Y = f => B - (B - T) * f;
+    ctx.font = `24px ${getComputedStyle(document.documentElement).getPropertyValue("--mono")}`;
+    ctx.strokeStyle = "rgba(127,147,178,.6)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, B); ctx.lineTo(Rt, B); ctx.stroke();
+    ctx.fillStyle = C.soft; ctx.fillText("100%", 8, T + 8); ctx.fillText("0%", 32, B + 6);
+    ctx.fillText("day 0", L - 4, B + 38); const lab = `day ${D}`; ctx.fillText(lab, Rt - ctx.measureText(lab).width, B + 38);
+    if (st.mode === "catch"){
+      ctx.setLineDash([8, 8]); ctx.strokeStyle = "rgba(255,181,71,.6)";
+      ctx.beginPath(); ctx.moveTo(L, Y(.5)); ctx.lineTo(Rt, Y(.5)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.amber; ctx.fillText("half full", L + 10, Y(.5) - 10);
+    } else {
+      ctx.setLineDash([8, 8]); ctx.strokeStyle = "rgba(230,238,247,.5)";
+      ctx.beginPath(); ctx.moveTo(X(st.guess), T); ctx.lineTo(X(st.guess), B); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.ink; ctx.fillText("your guess", Math.min(X(st.guess) + 8, Rt - 150), T + 22);
+    }
+    const t = st.t;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 5; ctx.beginPath();
+    const steps = Math.max(2, Math.ceil(t * 12));
+    for (let s = 0; s <= steps; s++){ const d = t * s / steps, f = Math.min(Math.pow(st.R, d) / st.K, 1); s ? ctx.lineTo(X(d), Y(f)) : ctx.moveTo(X(d), Y(f)); }
+    ctx.stroke();
+    const f = Math.min(Math.pow(st.R, t) / st.K, 1);
+    ctx.fillStyle = C.amber; ctx.beginPath(); ctx.arc(X(t), Y(f), 10, 0, 7); ctx.fill();
+  }
+
+  // ---------- the dot's running commentary ----------
+  const LINES = [[0, "nothing's happening…"], [.08, "hm."], [.2, "wait—"], [.45, "uh oh."], [1, "…gone."]];
+  let lastLine = "";
+  function comment(f){
+    let s = LINES[0][1]; for (const [th, txt] of LINES) if (f >= th) s = txt;
+    if (s !== lastLine){ lastLine = s; const el = $("says"); el.textContent = s; el.classList.add("pulse"); setTimeout(() => el.classList.remove("pulse"), 180); }
+  }
+
+  // ---------- render loop ----------
+  function frame(now){
+    const f = Math.min(Math.pow(st.R, st.t) / st.K, 1);
+    const n = cellsFor(f);
+    if (n > shown){ for (let j = shown; j < n; j++) born[j] = now; if (st.phase === "run") pop(.05 + .12 * f, 780 + 420 * f, 250); shown = n; }
+    const cv = $("pond"); drawPond(cv.getContext("2d"), cv.width, 0, 0, f, now, true);
+    $("day").textContent = `DAY ${Math.floor(st.t + 1e-9)}`;
+    const pct = f * 100;
+    $("pct").textContent = `${fmt(Math.min(Math.pow(st.R, st.t), st.K))} dots · ${pct < 1 ? pct.toPrecision(1) : Math.round(pct)}%`;
+    drawChart();
+    if (st.phase === "run") comment(f);
+  }
+  let raf = 0, t0 = 0, rate = 1, tStart = 0, tEnd = 0;
+  function loop(now){
+    if (st.phase !== "run") { frame(now); return; }
+    st.t = Math.min(tStart + (now - t0) / 1000 * rate, tEnd);
+    frame(now);
+    if (st.t >= tEnd) { end(); return; }
+    raf = requestAnimationFrame(loop);
+  }
+
+  // ---------- game flow ----------
+  function reset(){
+    cancelAnimationFrame(raf); st.phase = "idle"; st.t = 0; st.stopF = null; shown = 0; born.fill(-1); lastLine = "";
+    $("says").textContent = ""; $("result").innerHTML = st.mode === "catch"
+      ? `<p class="muted">Press <b>Start</b>. Tap the pond when it's half full.</p>`
+      : `<p class="muted">Set your guess on the right, then press <b>Start</b>.</p>`;
+    $("actions").classList.add("hide"); $("go").textContent = "Start"; $("go").classList.remove("stop"); $("go").disabled = false;
+    labels(); requestAnimationFrame(frame); showBest();
+  }
+  function start(){
+    reset(); st.phase = "run"; lastLine = "";
+    const F = fillDay(st.R, st.K);
+    if (st.mode === "catch"){
+      // start around 0.4% so the slow part is short but real; random wait so nobody can count it
+      tStart = Math.max(0, tAt(.004, st.R, st.K)); tEnd = tAt(1, st.R, st.K);
+      rate = (tEnd - tStart) / 5.2;                             // ~5 s from 0.4% to full
+      $("go").textContent = "STOP  (or tap the pond)"; $("go").classList.add("stop");
+    } else {
+      tStart = 0; tEnd = F; rate = Math.max(F / 7, .6);         // whole run in about 7 s
+      $("go").disabled = true;
+    }
+    st.t = tStart; comment(0);
+    $("result").innerHTML = st.mode === "catch"
+      ? `<p class="muted">Watch the pond. Tap it (or press <b>Space</b>) the moment it's half full.</p>`
+      : `<p class="muted">You said <b>day ${st.guess}</b>. Watch…</p>`;
+    const delay = st.mode === "catch" ? 600 + Math.random() * 900 : 350;
+    setTimeout(() => { if (st.phase !== "run") return; t0 = performance.now(); raf = requestAnimationFrame(loop); }, delay);
+  }
+  function stop(){
+    if (st.phase !== "run" || st.mode !== "catch") return;
+    cancelAnimationFrame(raf); st.stopT = st.t; st.stopF = Math.min(Math.pow(st.R, st.t) / st.K, 1);
+    end(true);
+  }
+  function end(stopped){
+    st.phase = "done"; cancelAnimationFrame(raf);
+    const flash = $("flash"); flash.classList.add("on"); setTimeout(() => flash.classList.remove("on"), 60);
+    pop(.22, 700, 150, .14);
+    $("go").textContent = "Play again"; $("go").classList.remove("stop"); $("go").disabled = false;
+    if (st.mode === "catch") catchResult(stopped); else guessResult();
+    $("actions").classList.remove("hide");
+    safe(() => history.replaceState(null, "", shareURL(false)));        // harmless if the page is sandboxed
+    const s0 = performance.now();                                     // let the last pops finish
+    const settle = n => { frame(n); if (st.phase === "done" && n - s0 < 450) requestAnimationFrame(settle); };
+    requestAnimationFrame(settle);
+  }
+  function catchVerdict(f){
+    if (f === null) return "too late. it's already gone.";
+    const d = f - .5;
+    if (Math.abs(d) <= .03) return "perfect. you saw it coming.";
+    if (Math.abs(d) <= .08) return "so close.";
+    if (d > 0) return "too late. slow isn't safe.";
+    return "too early. patience—it still starts slow.";
+  }
+  function catchResult(stopped){
+    const F = fillDay(st.R, st.K), tHalf = tAt(.5, st.R, st.K);
+    const f = stopped ? st.stopF : null;
+    let head, detail;
+    if (!stopped){ head = `Too late — <em>it's full</em>.`; detail = `Half full was on day ${tHalf.toFixed(1)}. One R-step later, it was gone.`; }
+    else {
+      const ms = Math.round((st.stopT - tHalf) / rate * 1000);
+      head = `You stopped it at <em>${Math.round(f * 100)}%</em>.`;
+      detail = Math.abs(ms) < 25 ? `Right on half full. Nice.` : `That's ${Math.abs(ms)} ms ${ms > 0 ? "too late" : "too early"} — half full was day ${tHalf.toFixed(1)} of ${F}.`;
+      saveBest(Math.abs(f - .5), f);
+    }
+    $("result").innerHTML = `<p class="big">${head}</p><p class="line">${detail}</p>
+      <p class="line muted">At a quarter full it still looks like plenty of room. That's the trap.</p>`;
+    $("says").textContent = catchVerdict(f);
+    showBest();
+  }
+  function guessVerdict(F, g){ const o = g - F; return o === 0 ? "you saw it coming." : Math.abs(o) <= 2 ? "so close. you get it." : o > 0 ? "slow isn't safe. slow is just early." : "patience! it still starts slow."; }
+  function guessResult(){
+    const F = fillDay(st.R, st.K), E = emptyDay(st.R, st.K), o = st.guess - F;
+    const emptyLine = (E !== null && E >= 0 && E < F) ? `On <b>day ${E}</b> it was still ${emptyPct(st.R, st.K, E)}% empty — ${F - E} day${F - E === 1 ? "" : "s"} before it filled.` : `Your pond is so small it was never mostly empty for long.`;
+    const gl = o === 0 ? `You guessed <b>day ${st.guess}</b>. Exactly right.` : `You guessed <b>day ${st.guess}</b> — ${Math.abs(o)} day${Math.abs(o) === 1 ? "" : "s"} too ${o > 0 ? "late" : "early"}.`;
+    $("result").innerHTML = `<p class="big">Your pond fills on <em>day ${F}</em>.</p><p class="line">${emptyLine}</p><p class="line">${gl}</p>`;
+    $("says").textContent = guessVerdict(F, st.guess);
+  }
+  // best score (this browser only; fine if storage is unavailable)
+  function saveBest(diff, f){ safe(() => { const b = JSON.parse(localStorage.getItem("hpg-pond-best") || "null"); if (!b || diff < b.diff) localStorage.setItem("hpg-pond-best", JSON.stringify({diff, f})); }); }
+  function showBest(){ const b = safe(() => JSON.parse(localStorage.getItem("hpg-pond-best") || "null")); $("best").textContent = b ? `Your best: stopped at ${Math.round(b.f * 100)}%` : ""; }
+
+  $("go").addEventListener("click", () => { if (st.phase === "run") stop(); else start(); });
+  $("pond").addEventListener("pointerdown", e => { if (st.phase === "run") { e.preventDefault(); stop(); } else if (st.phase !== "run" && st.mode === "catch") start(); });
+  window.addEventListener("keydown", e => { if (e.code === "Space" && !/INPUT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); st.phase === "run" ? stop() : start(); } });
+  $("again").addEventListener("click", start);
+
+  // ---------- sharing ----------
+  function shareURL(absolute = true){
+    const p = `?m=${st.mode}&r=${st.R.toFixed(1)}&k=${st.K}` + (st.mode === "guess" ? `&g=${st.guess}` : "");
+    const here = safe(() => (/^https?:$/.test(location.protocol) && location.pathname) ? location.origin + location.pathname : null);
+    return absolute ? (here && !/claudeusercontent|localhost|127\.0\.0\.1/.test(here) ? here : HOME) + p : p;
+  }
+  function renderCard(){
+    const cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1350;
+    const ctx = cv.getContext("2d"), W = cv.width, H = cv.height, F = fillDay(st.R, st.K);
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H); ctx.strokeStyle = C.grid; ctx.lineWidth = 2;
+    for (let x = 0; x <= W; x += 54){ ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y <= H; y += 54){ ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.fillStyle = C.soft; ctx.font = `600 30px "Geist Mono"`; ctx.fillText("HPG MATH · MY POND", 80, 110);
+    ctx.font = `700 76px "Bricolage Grotesque"`;
+    let f, l1, l2, sub;
+    if (st.mode === "catch"){
+      f = st.stopF === null ? 1 : st.stopF;
+      l1 = "I stopped my pond at"; l2 = st.stopF === null ? "too late." : `${Math.round(f * 100)}% full.`;
+      sub = "The goal was 50%.";
+    } else {
+      const E = emptyDay(st.R, st.K), eDay = (E !== null && E >= 0 && E < F) ? E : Math.max(F - 1, 0);
+      f = Math.min(Math.pow(st.R, eDay) / st.K, 1);
+      l1 = "My pond fills on"; l2 = `day ${F}.`; sub = `Day ${eDay}: still ${emptyPct(st.R, st.K, eDay)}% empty. My guess: day ${st.guess}.`;
+    }
+    ctx.fillStyle = C.ink; ctx.fillText(l1, 80, 210); ctx.fillStyle = C.amber; ctx.fillText(l2, 80, 300);
+    drawPond(ctx, 600, 80, 350, f, 0, false);
+    ctx.fillStyle = C.ink; ctx.font = `400 34px "Geist Mono"`;
+    wrap(ctx, sub, 80, 1030, 900, 44);
+    ctx.fillText(`R = ${st.R.toFixed(1)}  ·  pond = ${fmt(st.K)}`, 80, 1120);
+    ctx.fillStyle = C.amber; ctx.font = `46px "Nothing You Could Do"`;
+    ctx.fillText(st.mode === "catch" ? catchVerdict(st.stopF) : guessVerdict(F, st.guess), 80, 1200);
+    ctx.fillStyle = C.soft; ctx.font = `400 26px "Geist Mono"`; ctx.fillText("try yours → " + HOME.replace("https://", ""), 80, 1275);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(860, 560, 90, 0, 7); ctx.stroke();
+    const ax = 860 + 90 * Math.cos(-.7), ay = 560 + 90 * Math.sin(-.7), g = ctx.createRadialGradient(ax, ay, 12, ax, ay, 64);
+    g.addColorStop(0, "rgba(255,181,71,.45)"); g.addColorStop(1, "rgba(255,181,71,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ax, ay, 64, 0, 7); ctx.fill(); ctx.fillStyle = C.amber; ctx.beginPath(); ctx.arc(ax, ay, 30, 0, 7); ctx.fill();
+    return cv;
+  }
+  function wrap(ctx, text, x, y, maxW, lh){ let line = ""; for (const w of text.split(" ")){ const t = line ? line + " " + w : w; if (ctx.measureText(t).width > maxW && line){ ctx.fillText(line, x, y); line = w; y += lh; } else line = t; } if (line) ctx.fillText(line, x, y); }
+  async function cardBlob(){ await safe(() => document.fonts.ready); return new Promise(res => renderCard().toBlob(res, "image/png")); }
+  $("save").addEventListener("click", async () => {
+    const b = await cardBlob(), a = document.createElement("a");
+    a.href = URL.createObjectURL(b); a.download = "my-pond.png"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+  $("share").addEventListener("click", async () => {
+    const url = shareURL(true);
+    const text = st.mode === "catch"
+      ? (st.stopF === null ? "My pond got away from me. Can you stop it at half full?" : `I stopped my pond at ${Math.round(st.stopF * 100)}% (goal: 50%). Can you do better?`)
+      : `My pond fills on day ${fillDay(st.R, st.K)}. I guessed day ${st.guess}. Guess yours:`;
+    try {
+      const b = await cardBlob(), file = new File([b], "my-pond.png", {type: "image/png"});
+      if (navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file], text, url}); return; }
+      if (navigator.share) { await navigator.share({text, url}); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    const ok = await safe(async () => { await navigator.clipboard.writeText(`${text} ${url}`); return true; });
+    toast(ok ? "Link copied" : url);
+  });
+  function toast(msg){ const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2200); }
+
+  // ---------- go ----------
+  setMode(st.mode);
+  safe(() => document.fonts.ready.then(() => frame(performance.now())));
+  window.__pond = {fillDay, emptyDay, tAt, st, renderCard, shareURL};   // for tests
+})();
+</script>
+</body>
+</html>
